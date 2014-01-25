@@ -1,0 +1,9 @@
+{
+  "apiKey": "",
+  "mysqlConfig": {
+    "username": "",
+    "password": "",
+    "host": "",
+    "database": ""
+  }
+}
