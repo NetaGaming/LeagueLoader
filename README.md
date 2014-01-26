@@ -12,10 +12,13 @@ Pulls summoner and game data into a database for tracking and later consumption.
 ## TODO
 
 * General
-** download champion data (name and images)
-** download item data (name and images)
-** download spell data (name and images)
-** accept command line arguments (so that static data can be downloaded less often)
+
+    * download champion data (name and images)
+    * download item data (name and images)
+    * download spell data (name and images)
+    * accept command line arguments (so that static data can be downloaded less often)
+
 * Neta
-** track teams
-** separate games that were specific to League play
+
+    * track teams
+    * separate games that were specific to League play
