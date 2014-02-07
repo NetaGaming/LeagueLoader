@@ -22,18 +22,14 @@ CREATE TABLE IF NOT EXISTS neta_teams (
     PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS summoner_games (
-    id int(11) AUTO_INCREMENT not null,
-    summonerId bigint not null,
-    gameId bigint not null,
-    championId int not null,
-    spellOne int not null,
-    spellTwo int not null,
-    statId int(11) not null,
+CREATE TABLE IF NOT EXISTS summoners (
+    id bigint(20) not null,
+    name varchar(40) not null,
+    real_name varchar(60) not null,
+    neta_team int(11) null,
+    `level` int(11) not null,
     PRIMARY KEY (id),
-    FOREIGN KEY (statId) REFERENCES summoner_stats(id),
-    FOREIGN KEY (summonerId) REFERENCES summoners(id),
-    FOREIGN KEY (gameId) REFERENCES game_info(id)
+    FOREIGN KEY (neta_team) REFERENCES neta_teams(id)
 );
 
 CREATE TABLE IF NOT EXISTS summoner_stats (
@@ -115,4 +111,18 @@ CREATE TABLE IF NOT EXISTS summoner_stats (
     wardPlaced int,
     win bit(1),
     PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS summoner_games (
+    id int(11) AUTO_INCREMENT not null,
+    summonerId bigint not null,
+    gameId bigint not null,
+    championId int not null,
+    spellOne int not null,
+    spellTwo int not null,
+    statId int(11) not null,
+    PRIMARY KEY (id),
+    FOREIGN KEY (statId) REFERENCES summoner_stats(id),
+    FOREIGN KEY (summonerId) REFERENCES summoners(id),
+    FOREIGN KEY (gameId) REFERENCES game_info(id)
 );
