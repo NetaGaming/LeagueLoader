@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/TrevorSStone/goriot"
 	"github.com/coopernurse/gorp"
+	"github.com/yvasiyarov/gorelic"
 	_ "github.com/ziutek/mymysql/godrv"
 	"log"
 	"os"
@@ -22,6 +23,7 @@ import (
 /* Config elements */
 type Configuration struct {
 	ApiKey   string      `json:"apiKey"`
+	NewRelic string      `json:"newRelicKey"`
 	DbConfig MysqlConfig `json:"mysqlConfig"`
 }
 
@@ -59,6 +61,12 @@ func main() {
 	goriot.SetSmallRateLimit(10, 10*time.Second)
 	goriot.SetLongRateLimit(500, 10*time.Minute)
 
+	// New Relic setup
+	agent := gorelic.NewAgent()
+	agent.NewrelicLicense = config.NewRelic
+	agent.NewrelicName = "League Loader"
+	agent.Run()
+
 	// Make connection
 	dbmap := initDb(dbConfig.Database, dbConfig.Username, dbConfig.Password)
 	defer dbmap.Db.Close()
@@ -70,7 +78,9 @@ func main() {
 	updateSummoners(summoners, dbmap)
 	fmt.Println("Summoners updated")
 
+	// update game information
 	updateGames(summoners, dbmap)
+	fmt.Println("Games updated")
 
 	return
 }
