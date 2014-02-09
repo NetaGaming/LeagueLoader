@@ -53,10 +53,17 @@ func checkErr(e error, message string) {
 
 func main() {
 
+    // set loader start time
+    var startTime string = time.Now().Format("2006-01-02 15:04:05")
+
 	var config Configuration = openAndReadConfig("config.json")
 	var dbConfig MysqlConfig = config.DbConfig
 
-	// Goriot setup
+	// Make connection
+	dbmap := initDb(dbConfig.Database, dbConfig.Username, dbConfig.Password)
+	defer dbmap.Db.Close()
+
+    // Goriot setup
 	goriot.SetAPIKey(config.ApiKey)
 	goriot.SetSmallRateLimit(10, 10*time.Second)
 	goriot.SetLongRateLimit(500, 10*time.Minute)
@@ -66,10 +73,6 @@ func main() {
 	agent.NewrelicLicense = config.NewRelic
 	agent.NewrelicName = "League Loader"
 	agent.Run()
-
-	// Make connection
-	dbmap := initDb(dbConfig.Database, dbConfig.Username, dbConfig.Password)
-	defer dbmap.Db.Close()
 
 	// get list of available summoners
 	var summoners []int64 = getSummoners(dbmap)
@@ -81,6 +84,10 @@ func main() {
 	// update game information
 	updateGames(summoners, dbmap)
 	fmt.Println("Games updated")
+
+    // end loader time and save
+    var endTime string = time.Now().Format("2006-01-02 15:04:05")
+    saveLoadReport(startTime, endTime, dbmap)
 
 	return
 }
@@ -131,4 +138,21 @@ func existsInSlice(search int64, values []int64) (exists bool) {
 	}
 
 	return false
+}
+
+// Saves runttime report to db
+func saveLoadReport(StartTime string, EndTime string, dbmap *gorp.DbMap) {
+    var reportQuery string =
+        `INSERT INTO runtimes
+            (startTime, endTime, records)
+         VALUES
+            (?,?,?)`
+    _, err := dbmap.Exec( reportQuery,
+        StartTime,
+        EndTime,
+        "NULL")
+
+    checkErr(err,"Could not report to database")
+
+    fmt.Println("Reported")
 }

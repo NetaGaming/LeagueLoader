@@ -109,7 +109,6 @@ CREATE TABLE IF NOT EXISTS summoner_stats (
     visionWardsBought int,
     wardKilled int,
     wardPlaced int,
-    win bit(1),
     PRIMARY KEY (id)
 );
 
@@ -121,8 +120,17 @@ CREATE TABLE IF NOT EXISTS summoner_games (
     spellOne int not null,
     spellTwo int not null,
     statId int(11) not null,
+    won bit(1),
     PRIMARY KEY (id),
     FOREIGN KEY (statId) REFERENCES summoner_stats(id),
     FOREIGN KEY (summonerId) REFERENCES summoners(id),
     FOREIGN KEY (gameId) REFERENCES game_info(id)
+);
+
+CREATE TABLE IF NOT EXISTS runtimes (
+    id int(11) AUTO_INCREMENT not null,
+    startTime datetime not null,
+    endTime datetime,
+    records int(11),
+    PRIMARY KEY (id)
 );
