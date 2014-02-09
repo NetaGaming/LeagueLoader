@@ -7,7 +7,7 @@ import (
 )
 
 // use list of summoners to download game data
-func updateGames(summoners []int64, dbmap *gorp.DbMap) {
+func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
 
 	// get stored game ids for summoners
 	var gameIdQuery string = `SELECT id FROM  game_info`
@@ -192,5 +192,5 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) {
 		}
 	}
 
-	return
+	return len(savedGames)
 }

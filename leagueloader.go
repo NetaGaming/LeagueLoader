@@ -82,12 +82,12 @@ func main() {
 	fmt.Println("Summoners updated")
 
 	// update game information
-	updateGames(summoners, dbmap)
-	fmt.Println("Games updated")
+	var updatedGameCount int = updateGames(summoners, dbmap) - 1
+    fmt.Println("Games updated: ",updatedGameCount)
 
     // end loader time and save
     var endTime string = time.Now().Format("2006-01-02 15:04:05")
-    saveLoadReport(startTime, endTime, dbmap)
+    saveLoadReport(startTime, endTime, updatedGameCount, dbmap)
 
 	return
 }
@@ -141,7 +141,7 @@ func existsInSlice(search int64, values []int64) (exists bool) {
 }
 
 // Saves runttime report to db
-func saveLoadReport(StartTime string, EndTime string, dbmap *gorp.DbMap) {
+func saveLoadReport(StartTime string, EndTime string, Records int, dbmap *gorp.DbMap) {
     var reportQuery string =
         `INSERT INTO runtimes
             (startTime, endTime, records)
@@ -150,7 +150,7 @@ func saveLoadReport(StartTime string, EndTime string, dbmap *gorp.DbMap) {
     _, err := dbmap.Exec( reportQuery,
         StartTime,
         EndTime,
-        "NULL")
+        Records)
 
     checkErr(err,"Could not report to database")
 
