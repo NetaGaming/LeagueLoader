@@ -53,8 +53,8 @@ func checkErr(e error, message string) {
 
 func main() {
 
-    // set loader start time
-    var startTime string = time.Now().Format("2006-01-02 15:04:05")
+	// set loader start time
+	var startTime string = time.Now().Format("2006-01-02 15:04:05")
 
 	var config Configuration = openAndReadConfig("config.json")
 	var dbConfig MysqlConfig = config.DbConfig
@@ -63,7 +63,7 @@ func main() {
 	dbmap := initDb(dbConfig.Database, dbConfig.Username, dbConfig.Password)
 	defer dbmap.Db.Close()
 
-    // Goriot setup
+	// Goriot setup
 	goriot.SetAPIKey(config.ApiKey)
 	goriot.SetSmallRateLimit(10, 10*time.Second)
 	goriot.SetLongRateLimit(500, 10*time.Minute)
@@ -83,11 +83,11 @@ func main() {
 
 	// update game information
 	var updatedGameCount int = updateGames(summoners, dbmap) - 1
-    fmt.Println("Games updated: ",updatedGameCount)
+	fmt.Println("Games updated: ", updatedGameCount)
 
-    // end loader time and save
-    var endTime string = time.Now().Format("2006-01-02 15:04:05")
-    saveLoadReport(startTime, endTime, updatedGameCount, dbmap)
+	// end loader time and save
+	var endTime string = time.Now().Format("2006-01-02 15:04:05")
+	saveLoadReport(startTime, endTime, updatedGameCount, dbmap)
 
 	return
 }
@@ -142,17 +142,16 @@ func existsInSlice(search int64, values []int64) (exists bool) {
 
 // Saves runttime report to db
 func saveLoadReport(StartTime string, EndTime string, Records int, dbmap *gorp.DbMap) {
-    var reportQuery string =
-        `INSERT INTO runtimes
+	var reportQuery string = `INSERT INTO runtimes
             (startTime, endTime, records)
          VALUES
             (?,?,?)`
-    _, err := dbmap.Exec( reportQuery,
-        StartTime,
-        EndTime,
-        Records)
+	_, err := dbmap.Exec(reportQuery,
+		StartTime,
+		EndTime,
+		Records)
 
-    checkErr(err,"Could not report to database")
+	checkErr(err, "Could not report to database")
 
-    fmt.Println("Reported")
+	fmt.Println("Reported")
 }

@@ -175,7 +175,7 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
                             (summonerId, gameId, championId, spellOne, spellTwo,
                              statId, won)
                         VALUES
-                            (?,?,?,?,?,?,?)`
+                            (?,?,?,?,?,?,FROM_UNIXTIME(?))`
 					_, sgErr := dbmap.Exec(
 						summonerGameQuery,
 						summonerId,
