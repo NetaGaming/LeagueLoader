@@ -36,7 +36,7 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
                             INSERT INTO game_info
                                 (id, mode, type, subType, mapId, date)
                             VALUES
-                                (?, ?, ?, ?, ?, ?)`
+                                (?, ?, ?, ?, ?, FROM_UNIXTIME(?))`
 						_, infoErr := dbmap.Exec(
 							gameInfoQuery,
 							game.GameID,
@@ -175,7 +175,7 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
                             (summonerId, gameId, championId, spellOne, spellTwo,
                              statId, won)
                         VALUES
-                            (?,?,?,?,?,?,FROM_UNIXTIME(?))`
+                            (?,?,?,?,?,?,?)`
 					_, sgErr := dbmap.Exec(
 						summonerGameQuery,
 						summonerId,
