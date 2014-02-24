@@ -22,3 +22,7 @@ Pulls summoner and game data into a database for tracking and later consumption.
 
     * track teams
     * separate games that were specific to League play
+
+## Disclaimer
+
+**This product is not endorsed, certified or otherwise approved in any way by Riot Games, Inc. or any of its affiliates.**
