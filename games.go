@@ -38,11 +38,11 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
 	checkErr(err, "Could not get game ids from database")
 
 	// get most recent games for each summoner
-	var playedGames []int64 = make([]int64, 1)
+	var playedGames []int64
 	var savedGames = make([]int64, 1)
 	for _, summonerId := range summoners {
-		fmt.Printf("\nChecking summoner: %d\n", summonerId)
-		fmt.Printf("---\n")
+
+		playedGames = make([]int64, 1)
 		summonerGames, riotErr := goriot.RecentGameBySummoner(goriot.NA, summonerId)
 		if riotErr != nil {
 			panic(riotErr)
@@ -52,8 +52,6 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
 			&playedGames,
 			fmt.Sprintf(summonerGameIdQuery, summonerId))
 		checkErr(err, "Could not find games for summoner")
-
-		fmt.Printf("%d has %d games played\n", summonerId, len(playedGames))
 
 		// save game if we don't already have it
 		for _, game := range summonerGames {
@@ -70,12 +68,13 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
 				}
 			}
 			if existsInSlice(game.GameID, playedGames) == false {
-				fmt.Printf("%d hasn't played %d\n", summonerId, game.GameID)
 				var stats goriot.GameStat = game.Statistics
 				statId := updateSummonerStatistics(summonerId, stats, dbmap)
 
 				updateSummonerGames(
 					summonerId, game, statId, stats.Win, dbmap)
+			} else {
+				fmt.Printf("Already played %d\n", game.GameID)
 			}
 		}
 
