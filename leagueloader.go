@@ -13,17 +13,17 @@ import (
 	"fmt"
 	"github.com/TrevorSStone/goriot"
 	"github.com/coopernurse/gorp"
-	"github.com/yvasiyarov/gorelic"
 	_ "github.com/ziutek/mymysql/godrv"
 	"log"
 	"os"
 	"time"
 )
 
+var dtFormat string = "2006-01-02 15:04:05"
+
 /* Config elements */
 type Configuration struct {
 	ApiKey   string      `json:"apiKey"`
-	NewRelic string      `json:"newRelicKey"`
 	DbConfig MysqlConfig `json:"mysqlConfig"`
 }
 
@@ -32,16 +32,6 @@ type MysqlConfig struct {
 	Password string `json:"password"`
 	Host     string `json:"host"`
 	Database string `json:"database"`
-}
-
-/* Database tables */
-// so far, unused
-type Summoner struct {
-	Id       int64
-	Name     string
-	RealName string `db:"real_name"`
-	TeamId   int    `db:"neta_team"`
-	Level    int
 }
 
 // Streamlines checking for errors
@@ -54,7 +44,7 @@ func checkErr(e error, message string) {
 func main() {
 
 	// set loader start time
-	var startTime string = time.Now().Format("2006-01-02 15:04:05")
+	var startTime string = time.Now().Format(dtFormat)
 
 	var config Configuration = openAndReadConfig("config.json")
 	var dbConfig MysqlConfig = config.DbConfig
@@ -64,15 +54,10 @@ func main() {
 	defer dbmap.Db.Close()
 
 	// Goriot setup
+	// TODO: move limits to configuration
 	goriot.SetAPIKey(config.ApiKey)
 	goriot.SetSmallRateLimit(10, 10*time.Second)
 	goriot.SetLongRateLimit(500, 10*time.Minute)
-
-	// New Relic setup
-	agent := gorelic.NewAgent()
-	agent.NewrelicLicense = config.NewRelic
-	agent.NewrelicName = "League Loader"
-	agent.Run()
 
 	// get list of available summoners
 	var summoners []int64 = getSummoners(dbmap)
@@ -86,7 +71,7 @@ func main() {
 	fmt.Println("Games updated: ", updatedGameCount)
 
 	// end loader time and save
-	var endTime string = time.Now().Format("2006-01-02 15:04:05")
+	var endTime string = time.Now().Format(dtFormat)
 	saveLoadReport(startTime, endTime, updatedGameCount, dbmap)
 
 	return
@@ -119,8 +104,6 @@ func initDb(database string, username string, password string) *gorp.DbMap {
 	checkErr(err, "Connection failed")
 
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "utf-8"}}
-
-	dbmap.AddTableWithName(Summoner{}, "summoners").SetKeys(false, "Id")
 
 	return dbmap
 }
