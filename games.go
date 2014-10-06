@@ -22,6 +22,8 @@ func hasSummonerAlreadyPlayedGame(summonerId int64, gameId int64, games []Played
 }
 
 // use list of summoners to download game data
+// TODO: use a channel as input for summoner IDs
+// TODO: use a channel to ouput summoner IDs as they finish
 func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
 
 	// get stored game ids for summoners
@@ -56,26 +58,16 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
 		// save game if we don't already have it
 		for _, game := range summonerGames {
 
-			if existsInSlice(game.GameID, gameIds) == false {
+			//TODO: get the last played game ID and compare to
+			//      downloaded games
 
-				if existsInSlice(game.GameID, savedGames) == false {
+			updateGameInfo(game, dbmap)
 
-					updateGameInfo(game, dbmap)
+			var stats goriot.GameStat = game.Statistics
+			statId := updateSummonerStatistics(summonerId, stats, dbmap)
 
-					// save game id to list to skip loading into
-					// game_info, in the event it shows again
-					savedGames = append(savedGames, game.GameID)
-				}
-			}
-			if existsInSlice(game.GameID, playedGames) == false {
-				var stats goriot.GameStat = game.Statistics
-				statId := updateSummonerStatistics(summonerId, stats, dbmap)
-
-				updateSummonerGames(
-					summonerId, game, statId, stats.Win, dbmap)
-			} else {
-				fmt.Printf("Already played %d\n", game.GameID)
-			}
+			updateSummonerGames(
+				summonerId, game, statId, stats.Win, dbmap)
 		}
 
 	}
@@ -85,6 +77,7 @@ func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
 
 func updateGameInfo(game goriot.Game, db *gorp.DbMap) {
 	// save game to db
+	// TODO: Use insert/update query instead
 	var gameInfoQuery string = `
                             INSERT INTO game_info
                                 (id, mode, type, subType, mapId, date)
@@ -110,6 +103,7 @@ func updateSummonerGames(
 	wonGame bool,
 	db *gorp.DbMap) {
 	// save summoner_game
+	// TODO: Use insert/update query instead
 	var summonerGameQuery string = `
                         INSERT INTO summoner_games
                             (summonerId, gameId, championId, spellOne, spellTwo,
