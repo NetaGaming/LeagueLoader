@@ -11,16 +11,6 @@ type PlayedGame struct {
 	GameId     int64 `db:"gameId"`
 }
 
-func hasSummonerAlreadyPlayedGame(summonerId int64, gameId int64, games []PlayedGame) (gameIsPlayed bool) {
-	for _, game := range games {
-		if game.SummonerId == summonerId && game.GameId == gameId {
-			return true
-		}
-	}
-
-	return false
-}
-
 // use list of summoners to download game data
 // TODO: use a channel as input for summoner IDs
 // TODO: use a channel to ouput summoner IDs as they finish
