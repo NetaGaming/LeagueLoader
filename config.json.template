@@ -5,5 +5,9 @@
     "password": "",
     "host": "",
     "database": ""
+  },
+  "limits": {
+    "reqPerTenSec": "10",
+    "reqPerTenMin": "500"
   }
 }
