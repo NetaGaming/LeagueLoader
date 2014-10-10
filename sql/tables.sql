@@ -25,9 +25,8 @@ CREATE TABLE IF NOT EXISTS neta_teams (
 CREATE TABLE IF NOT EXISTS summoners (
     id bigint(20) not null,
     name varchar(40) not null,
-    real_name varchar(60) not null,
     neta_team int(11) null,
-    `level` int(11) not null,
+    `level` int(11) null,
     last_update datetime null,
     PRIMARY KEY (id),
     FOREIGN KEY (neta_team) REFERENCES neta_teams(id)
@@ -135,3 +134,38 @@ CREATE TABLE IF NOT EXISTS runtimes (
     records int(11),
     PRIMARY KEY (id)
 );
+
+-- Pre-insert summoners
+INSERT INTO `summoners`
+    (name, id, `level`)
+VALUES
+     ('Darkmist16',77804,30)
+    ,('SuicideSnowman',21305835,30)
+    ,('Misaga',21465652,30)
+    ,('Delath',134961,30)
+    ,('AzayakaAkari',19772280,30)
+    ,('riskman64',24199871,30)
+    ,('Khoza',,)
+    ,('echoblaze',,)
+    ,('TheJuggler',,)
+    ,('m1tsu',,)
+    ,('019Ky',,)
+    ,('Mystenance',,)
+    ,('titan alibaba',,)
+    ,('striderfox',,)
+    ,('Faucetin',,)
+    ,('Takeiteasyonme',,)
+    ,('HybridEleven',,)
+    ,('taaaakun',,)
+    ,('Psychotic Idiot',,)
+    ,('W4yl4nder',,)
+    ,('Ngsanity',,)
+    ,('desunman',,)
+    ,('fadedlightx',,)
+    ,('akiraK',,)
+    ,('stopisme',,)
+    ,('ginourmous',,)
+    ,('karenkun',,)
+    ,('kalun85',,)
+    ,('juebag',,)
+    ,('1337bagger',,);
