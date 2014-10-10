@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS summoners (
     real_name varchar(60) not null,
     neta_team int(11) null,
     `level` int(11) not null,
+    last_update datetime null,
     PRIMARY KEY (id),
     FOREIGN KEY (neta_team) REFERENCES neta_teams(id)
 );

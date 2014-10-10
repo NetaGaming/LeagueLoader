@@ -7,9 +7,7 @@ import (
 	"strings"
 )
 
-/**
- * Get list of available summoners
- */
+// Get list of available summoners
 func getSummoners(dbmap *gorp.DbMap) <-chan int64 {
 
 	out := make(chan int64)
@@ -81,7 +79,7 @@ func updateSummoners(summoners <-chan int64, dbmap *gorp.DbMap) <-chan int64 {
 		`UPDATE summoners s INNER JOIN (
             %s
         ) r USING(id)
-        SET s.level = r.level, s.name = r.name;`,
+        SET s.level = r.level, s.name = r.name, s.last_update = UTC_TIMESTAMP();`,
 		strings.Join(selectQueries, " UNION "))
 
 	// run query and check for errors
