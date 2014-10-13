@@ -15,9 +15,18 @@ import (
 	_ "github.com/ziutek/mymysql/godrv"
 	"log"
 	"time"
+	"runtime"
+	"sync"
 )
 
 var dtFormat string = "2006-01-02 15:04:05"
+var globalWg sync.WaitGroup
+
+// We'll fill this from the database and pass it
+// around where ever we're updating Summoner info
+type SummonerInfo struct {
+	ID         int64     `db:"id"`
+}
 
 // Streamlines checking for errors
 func checkErr(e error, message string) {
@@ -30,6 +39,8 @@ func main() {
 
 	// set loader start time
 	//var startTime string = time.Now().Format(dtFormat)
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	var config Configuration = openAndReadConfig("config.json")
 	var dbConfig MysqlConfig = config.DbConfig
@@ -58,6 +69,8 @@ func main() {
 	// end loader time and save
 	//var endTime string = time.Now().Format(dtFormat)
 	//saveLoadReport(startTime, endTime, updatedGameCount, dbmap)
+
+	globalWg.Wait()
 
 	return
 }
