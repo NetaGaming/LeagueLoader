@@ -8,9 +8,12 @@ import (
 )
 
 // Get list of available summoners
-func getSummoners(dbmap *gorp.DbMap) <-chan SummonerInfo {
+func getSummoners(dbmap *gorp.DbMap)(
+	<-chan SummonerInfo, <-chan SummonerInfo) {
+	//<-chan SummonerInfo, <-chan SummonerInfo) {
 
-	out := make(chan SummonerInfo)
+	summonerChan := make(chan SummonerInfo)
+	gameChan := make(chan SummonerInfo)
 
 	// select summoners
 	var summoners []SummonerInfo
@@ -19,16 +22,18 @@ func getSummoners(dbmap *gorp.DbMap) <-chan SummonerInfo {
 		"select id from summoners")
 	checkErr(err, "Selecting summoner ids failed")
 
+	globalWg.Add(1)
 	go func() {
-		globalWg.Add(1)
 		for _, n := range summoners {
-			out <- n
+			summonerChan <- n
+			gameChan <- n
 		}
-		close(out)
+		close(summonerChan)
+		close(gameChan)
 		globalWg.Done()
 	}()
 
-	return out
+	return summonerChan, gameChan
 }
 
 // Updates summoner name and level
@@ -43,6 +48,7 @@ func updateSummoners(summoners <-chan SummonerInfo, dbmap *gorp.DbMap) <-chan Su
 	// forty and then combine them
 	go func() {
 		globalWg.Add(1)
+		var selectQueries []string
 		for s := range summoners {
 
 			// get riot data
@@ -58,7 +64,6 @@ func updateSummoners(summoners <-chan SummonerInfo, dbmap *gorp.DbMap) <-chan Su
 
 		// Build a slice of select queries that will be UNIONd
 		// together to help reduce DB calls
-		var selectQueries []string
 		for _, summoner := range SummonersGoRiot {
 			selectQueries = append(
 				selectQueries,

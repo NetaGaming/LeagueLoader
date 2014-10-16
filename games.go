@@ -2,96 +2,87 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/TrevorSStone/goriot"
 	"github.com/coopernurse/gorp"
 )
 
-type PlayedGame struct {
-	SummonerId int64 `db:"summonerId"`
-	GameId     int64 `db:"gameId"`
+type GameInfo struct {
+	SummonerID int64
+	Game       goriot.Game
+	StatID     int64
 }
 
 // use list of summoners to download game data
-// TODO: use a channel as input for summoner IDs
 // TODO: use a channel to ouput summoner IDs as they finish
-func updateGames(summoners []int64, dbmap *gorp.DbMap) (gameCount int) {
+func updateGames(summoners <-chan SummonerInfo, dbmap *gorp.DbMap) (gameCount int) {
 
-	// get stored game ids for summoners
-	var summonerGameIdQuery string = `
-        SELECT gameId
-        FROM summoner_games
-        INNER JOIN game_info gi ON
-            gi.id = gameId
-        WHERE summonerId = %d
-        ORDER by gi.date desc`
-	var gameIdQuery string = "SELECT id FROM game_info"
-	var gameIds []int64 = make([]int64, 1)
-	_, err := dbmap.Select(&gameIds, gameIdQuery)
-	checkErr(err, "Could not get game ids from database")
+	var out int = 0
+	gameChan1 := make(chan GameInfo)
+	gameChan2 := make(chan GameInfo)
 
-	// get most recent games for each summoner
-	var playedGames []int64
-	var savedGames = make([]int64, 1)
-	for _, summonerId := range summoners {
+	for s := range summoners {
 
-		playedGames = make([]int64, 1)
-		summonerGames, riotErr := goriot.RecentGameBySummoner(goriot.NA, summonerId)
-		if riotErr != nil {
-			panic(riotErr)
-		}
+		summonerGames, riotErr := goriot.RecentGameBySummoner(goriot.NA, s.ID)
+		checkErr(
+			riotErr,
+			fmt.Sprintf(
+				"Unable to get summoner's (%d) recent games",
+				s.ID))
 
-		_, err := dbmap.Select(
-			&playedGames,
-			fmt.Sprintf(summonerGameIdQuery, summonerId))
-		checkErr(err, "Could not find games for summoner")
+		// dump game info into channel
+		globalWg.Add(1)
+		go func() {
+			for _, game := range summonerGames {
+				gameChan1 <- GameInfo{s.ID, game, 0}
+				gameChan2 <- GameInfo{s.ID, game, 0}
+			}
+			globalWg.Done()
+		}()
 
-		// save game if we don't already have it
-		for _, game := range summonerGames {
+		// Update the shared game information
+		updateGameInfo(gameChan1, dbmap)
+		gameStats := updateSummonerStatistics(gameChan2, dbmap)
 
-			//TODO: get the last played game ID and compare to
-			//      downloaded games
-
-			updateGameInfo(game, dbmap)
-
-			var stats goriot.GameStat = game.Statistics
-			statId := updateSummonerStatistics(summonerId, stats, dbmap)
-
-			updateSummonerGames(
-				summonerId, game, statId, stats.Win, dbmap)
-		}
-
+		updateSummonerGames(gameStats, dbmap)
 	}
 
-	return len(savedGames)
+	return out
 }
 
-func updateGameInfo(game goriot.Game, db *gorp.DbMap) {
-	// save game to db
+// Updates the common game information
+func updateGameInfo(games <-chan GameInfo, db *gorp.DbMap) {
 	// TODO: Use insert/update query instead
 	var gameInfoQuery string = `
-                            INSERT INTO game_info
+                            INSERT IGNORE INTO game_info
                                 (id, mode, type, subType, mapId, date)
                             VALUES
                                 (?, ?, ?, ?, ?, FROM_UNIXTIME(?))`
-	_, infoErr := db.Exec(
-		gameInfoQuery,
-		game.GameID,
-		game.GameMode,
-		game.GameType,
-		game.SubType,
-		game.MapID,
-		game.CreateDate/1000)
-	if infoErr != nil {
-		panic(infoErr)
-	}
+
+	globalWg.Add(1)
+	go func() {
+
+		for gi := range games {
+			_, infoErr := db.Exec(
+				gameInfoQuery,
+				gi.Game.GameID,
+				gi.Game.GameMode,
+				gi.Game.GameType,
+				gi.Game.SubType,
+				gi.Game.MapID,
+				gi.Game.CreateDate/1000)
+			checkErr(infoErr, "Unable to insert new game info")
+		}
+
+		globalWg.Done()
+	}()
 }
 
+// Updates a summoners specific game information
 func updateSummonerGames(
-	summonerId int64,
-	game goriot.Game,
-	statId int64,
-	wonGame bool,
+	gameStats <-chan GameInfo,
 	db *gorp.DbMap) {
+
 	// save summoner_game
 	// TODO: Use insert/update query instead
 	var summonerGameQuery string = `
@@ -100,22 +91,30 @@ func updateSummonerGames(
                              statId, won)
                         VALUES
                             (?,?,?,?,?,?,?)`
-	_, sgErr := db.Exec(
-		summonerGameQuery,
-		summonerId,
-		game.GameID,
-		game.ChampionID,
-		game.Spell1,
-		game.Spell2,
-		statId,
-		wonGame)
-	checkErr(sgErr, "Could not save summoner game info")
+	globalWg.Add(1)
+	go func() {
+
+		for gs := range gameStats {
+			_, sgErr := db.Exec(
+				summonerGameQuery,
+				gs.SummonerID,
+				gs.Game.GameID,
+				gs.Game.ChampionID,
+				gs.Game.Spell1,
+				gs.Game.Spell2,
+				gs.StatID,
+				gs.Game.Statistics.Win)
+			checkErr(sgErr, "Could not save summoner game info")
+		}
+
+		globalWg.Done()
+	}()
+
 }
 
 func updateSummonerStatistics(
-	summonerId int64,
-	stats goriot.GameStat,
-	db *gorp.DbMap) (statId int64) {
+	gameInfo <-chan GameInfo,
+	db *gorp.DbMap) <-chan GameInfo {
 	// save stats
 	var statsQuery string = `
                         INSERT INTO summoner_stats
@@ -149,87 +148,102 @@ func updateSummonerStatistics(
                             (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
                              ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,
                              ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-	statRes, statErr := db.Exec(
-		statsQuery,
-		stats.Assists,
-		stats.BarracksKilled,
-		stats.ChampionsKilled,
-		stats.CombatPlayerScore,
-		stats.ConsumablesPurchased,
-		stats.DamageDealtPlayer,
-		stats.DoubleKills,
-		stats.FirstBlood,
-		stats.Gold,
-		stats.GoldEarned,
-		stats.GoldSpent,
-		stats.Item0,
-		stats.Item1,
-		stats.Item2,
-		stats.Item3,
-		stats.Item4,
-		stats.Item5,
-		stats.Item6,
-		stats.ItemsPurchased,
-		stats.KillingSprees,
-		stats.LargestCriticalStrike,
-		stats.LargestKillingSpree,
-		stats.LargestMultiKill,
-		stats.LegendaryItemsCreated,
-		stats.Level,
-		stats.MagicDamageDealtPlayer,
-		stats.MagicDamageDealtToChampions,
-		stats.MagicDamageTaken,
-		stats.MinionsDenied,
-		stats.MinionsKilled,
-		stats.NeutralMinionsKilled,
-		stats.NeutralMinionsKilledEnemyJungle,
-		stats.NeutralMinionsKilledYourJungle,
-		stats.NexusKilled,
-		stats.NodeCapture,
-		stats.NodeCaptureAssist,
-		stats.NodeNeutralize,
-		stats.NodeNeutralizeAssist,
-		stats.NumDeaths,
-		stats.NumItemsBought,
-		stats.ObjectivePlayerScore,
-		stats.PentaKills,
-		stats.PhysicalDamageDealtPlayer,
-		stats.PhysicalDamageDealtToChampions,
-		stats.PhysicalDamageTaken,
-		stats.QuadraKills,
-		stats.SightWardsBought,
-		stats.Spell1Cast,
-		stats.Spell2Cast,
-		stats.Spell3Cast,
-		stats.Spell4Cast,
-		stats.SummonSpell1Cast,
-		stats.SummonSpell2Cast,
-		stats.SuperMonsterKilled,
-		stats.Team,
-		stats.TeamObjective,
-		stats.TimePlayed,
-		stats.TotalDamageDealt,
-		stats.TotalDamageDealtToChampions,
-		stats.TotalDamageTaken,
-		stats.TotalHeal,
-		stats.TotalPlayerScore,
-		stats.TotalScoreRank,
-		stats.TotalTimeCrowdControlDealt,
-		stats.TotalUnitsHealed,
-		stats.TripleKills,
-		stats.TrueDamageDealtPlayer,
-		stats.TrueDamageDealtToChampions,
-		stats.TrueDamageTaken,
-		stats.TurretsKilled,
-		stats.UnrealKills,
-		stats.VictoryPointTotal,
-		stats.VisionWardsBought,
-		stats.WardKilled,
-		stats.WardPlaced)
-	checkErr(statErr, "Could not insert stats")
 
-	statId, statIdErr := statRes.LastInsertId()
-	checkErr(statIdErr, "Could not get last insterted id")
+	out := make(chan GameInfo)
+	globalWg.Add(1)
+	go func() {
 
-	return statId
+		for gi := range gameInfo {
+			stats := gi.Game.Statistics
+			statRes, statErr := db.Exec(
+				statsQuery,
+				stats.Assists,
+				stats.BarracksKilled,
+				stats.ChampionsKilled,
+				stats.CombatPlayerScore,
+				stats.ConsumablesPurchased,
+				stats.DamageDealtPlayer,
+				stats.DoubleKills,
+				stats.FirstBlood,
+				stats.Gold,
+				stats.GoldEarned,
+				stats.GoldSpent,
+				stats.Item0,
+				stats.Item1,
+				stats.Item2,
+				stats.Item3,
+				stats.Item4,
+				stats.Item5,
+				stats.Item6,
+				stats.ItemsPurchased,
+				stats.KillingSprees,
+				stats.LargestCriticalStrike,
+				stats.LargestKillingSpree,
+				stats.LargestMultiKill,
+				stats.LegendaryItemsCreated,
+				stats.Level,
+				stats.MagicDamageDealtPlayer,
+				stats.MagicDamageDealtToChampions,
+				stats.MagicDamageTaken,
+				stats.MinionsDenied,
+				stats.MinionsKilled,
+				stats.NeutralMinionsKilled,
+				stats.NeutralMinionsKilledEnemyJungle,
+				stats.NeutralMinionsKilledYourJungle,
+				stats.NexusKilled,
+				stats.NodeCapture,
+				stats.NodeCaptureAssist,
+				stats.NodeNeutralize,
+				stats.NodeNeutralizeAssist,
+				stats.NumDeaths,
+				stats.NumItemsBought,
+				stats.ObjectivePlayerScore,
+				stats.PentaKills,
+				stats.PhysicalDamageDealtPlayer,
+				stats.PhysicalDamageDealtToChampions,
+				stats.PhysicalDamageTaken,
+				stats.QuadraKills,
+				stats.SightWardsBought,
+				stats.Spell1Cast,
+				stats.Spell2Cast,
+				stats.Spell3Cast,
+				stats.Spell4Cast,
+				stats.SummonSpell1Cast,
+				stats.SummonSpell2Cast,
+				stats.SuperMonsterKilled,
+				stats.Team,
+				stats.TeamObjective,
+				stats.TimePlayed,
+				stats.TotalDamageDealt,
+				stats.TotalDamageDealtToChampions,
+				stats.TotalDamageTaken,
+				stats.TotalHeal,
+				stats.TotalPlayerScore,
+				stats.TotalScoreRank,
+				stats.TotalTimeCrowdControlDealt,
+				stats.TotalUnitsHealed,
+				stats.TripleKills,
+				stats.TrueDamageDealtPlayer,
+				stats.TrueDamageDealtToChampions,
+				stats.TrueDamageTaken,
+				stats.TurretsKilled,
+				stats.UnrealKills,
+				stats.VictoryPointTotal,
+				stats.VisionWardsBought,
+				stats.WardKilled,
+				stats.WardPlaced)
+			checkErr(statErr, "Could not insert stats")
+
+			statId, statIdErr := statRes.LastInsertId()
+			checkErr(statIdErr, "Could not get last insterted id")
+
+			// drop new versions of GameInfo into a channel
+			out <- GameInfo{gi.SummonerID, gi.Game, statId}
+		}
+		close(out)
+
+		globalWg.Done()
+	}()
+
+	return out
 }

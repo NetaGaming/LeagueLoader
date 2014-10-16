@@ -14,9 +14,9 @@ import (
 	"github.com/coopernurse/gorp"
 	_ "github.com/ziutek/mymysql/godrv"
 	"log"
-	"time"
 	"runtime"
 	"sync"
+	"time"
 )
 
 var dtFormat string = "2006-01-02 15:04:05"
@@ -25,7 +25,7 @@ var globalWg sync.WaitGroup
 // We'll fill this from the database and pass it
 // around where ever we're updating Summoner info
 type SummonerInfo struct {
-	ID         int64     `db:"id"`
+	ID int64 `db:"id"`
 }
 
 // Streamlines checking for errors
@@ -52,19 +52,18 @@ func main() {
 	// Goriot setup
 	// TODO: move limits to configuration
 	goriot.SetAPIKey(config.ApiKey)
-	goriot.SetSmallRateLimit(10, 10*time.Second)
-	goriot.SetLongRateLimit(500, 10*time.Minute)
+	goriot.SetSmallRateLimit(3000, 10*time.Second)
+	goriot.SetLongRateLimit(180000, 10*time.Minute)
 
 	// get channel that streams summoner ids
-	summoners := getSummoners(dbmap)
+	//summoners, gameSummoners := getSummoners(dbmap)
+	summoners1, summoners2 := getSummoners(dbmap)
 
 	// update summoner information
-	updateSummoners(summoners, dbmap)
-	fmt.Println("Summoners updated")
+	updateSummoners(summoners1, dbmap)
 
 	// update game information
-	//var updatedGameCount int = updateGames(summoners, dbmap) - 1
-	//fmt.Println("Games updated: ", updatedGameCount)
+	updateGames(summoners2, dbmap)
 
 	// end loader time and save
 	//var endTime string = time.Now().Format(dtFormat)
