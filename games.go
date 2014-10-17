@@ -16,36 +16,30 @@ type GameInfo struct {
 func updateGames(summoners <-chan SummonerInfo, dbmap *gorp.DbMap) (gameCount int) {
 
 	var out int = 0
+	gameChan1 := make(chan GameInfo)
 
-	for s := range summoners {
+	// dump game info into channel
+	globalWg.Add(1)
+	go func() {
+		for s := range summoners {
 
-		summonerGames, riotErr := goriot.RecentGameBySummoner(goriot.NA, s.ID)
-		checkErr(
-			riotErr,
-			fmt.Sprintf(
-				"Unable to get summoner's (%d) recent games",
-				s.ID))
-
-		// dump game info into channel
-		globalWg.Add(1)
-		go func() {
-			gameChan1 := make(chan GameInfo)
+			summonerGames, riotErr := goriot.RecentGameBySummoner(goriot.NA, s.ID)
+			checkErr(
+				riotErr,
+				fmt.Sprintf(
+					"Unable to get summoner's (%d) recent games",
+					s.ID))
 
 			for _, game := range summonerGames {
 				gameChan1 <- GameInfo{s.ID, game}
 			}
+		}
+		close(gameChan1)
+		globalWg.Done()
+	}()
 
-			close(gameChan1)
-
-			// Update the shared game information
-			// TODO: these two methods aren't working here
-			gameChan2 := updateGameInfo(gameChan1, dbmap)
-			updateSummonerGames(gameChan2, dbmap)
-
-			globalWg.Done()
-		}()
-
-	}
+	gameChan2 := updateGameInfo(gameChan1, dbmap)
+	updateSummonerGames(gameChan2, dbmap)
 
 	return out
 }
