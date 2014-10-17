@@ -7,7 +7,7 @@
     "database": ""
   },
   "limits": {
-    "reqPerTenSec": "10",
-    "reqPerTenMin": "500"
+    "reqPerTenSec": 10,
+    "reqPerTenMin": 500
   }
 }
