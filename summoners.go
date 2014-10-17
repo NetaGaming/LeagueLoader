@@ -8,12 +8,11 @@ import (
 )
 
 // Get list of available summoners
-func getSummoners(dbmap *gorp.DbMap)(
+func getSummoners(dbmap *gorp.DbMap) (
 	<-chan SummonerInfo, <-chan SummonerInfo) {
-	//<-chan SummonerInfo, <-chan SummonerInfo) {
 
-	summonerChan := make(chan SummonerInfo)
-	gameChan := make(chan SummonerInfo)
+	summonerChan1 := make(chan SummonerInfo)
+	summonerChan2 := make(chan SummonerInfo)
 
 	// select summoners
 	var summoners []SummonerInfo
@@ -25,21 +24,19 @@ func getSummoners(dbmap *gorp.DbMap)(
 	globalWg.Add(1)
 	go func() {
 		for _, n := range summoners {
-			summonerChan <- n
-			gameChan <- n
+			summonerChan1 <- n
+			summonerChan2 <- n
 		}
-		close(summonerChan)
-		close(gameChan)
+		close(summonerChan1)
+		close(summonerChan2)
 		globalWg.Done()
 	}()
 
-	return summonerChan, gameChan
+	return summonerChan1, summonerChan2
 }
 
 // Updates summoner name and level
-func updateSummoners(summoners <-chan SummonerInfo, dbmap *gorp.DbMap) <-chan SummonerInfo {
-
-	out := make(chan SummonerInfo)
+func updateSummoners(summoners <-chan SummonerInfo, dbmap *gorp.DbMap) {
 
 	// we'll keep all the summoners details in here
 	var SummonersGoRiot map[int64]goriot.Summoner = make(map[int64]goriot.Summoner)
@@ -88,5 +85,4 @@ func updateSummoners(summoners <-chan SummonerInfo, dbmap *gorp.DbMap) <-chan Su
 		globalWg.Done()
 	}()
 
-	return out
 }
