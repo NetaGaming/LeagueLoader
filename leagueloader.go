@@ -52,8 +52,8 @@ func main() {
 	// Goriot setup
 	// TODO: move limits to configuration
 	goriot.SetAPIKey(config.ApiKey)
-	goriot.SetSmallRateLimit(3000, 10*time.Second)
-	goriot.SetLongRateLimit(180000, 10*time.Minute)
+	goriot.SetSmallRateLimit(config.Limits.RequestsPerTenSeconds, 10*time.Second)
+	goriot.SetLongRateLimit(config.Limits.RequestsPerTenMinutes, 10*time.Minute)
 
 	// get channel that streams summoner ids
 	//summoners, gameSummoners := getSummoners(dbmap)
