@@ -9,39 +9,23 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"github.com/TrevorSStone/goriot"
 	"github.com/coopernurse/gorp"
-	"github.com/yvasiyarov/gorelic"
 	_ "github.com/ziutek/mymysql/godrv"
 	"log"
-	"os"
+	"runtime"
+	"sync"
 	"time"
 )
 
-/* Config elements */
-type Configuration struct {
-	ApiKey   string      `json:"apiKey"`
-	NewRelic string      `json:"newRelicKey"`
-	DbConfig MysqlConfig `json:"mysqlConfig"`
-}
+var dtFormat string = "2006-01-02 15:04:05"
+var globalWg sync.WaitGroup
 
-type MysqlConfig struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Host     string `json:"host"`
-	Database string `json:"database"`
-}
-
-/* Database tables */
-// so far, unused
-type Summoner struct {
-	Id       int64
-	Name     string
-	RealName string `db:"real_name"`
-	TeamId   int    `db:"neta_team"`
-	Level    int
+// We'll fill this from the database and pass it
+// around where ever we're updating Summoner info
+type SummonerInfo struct {
+	ID int64 `db:"id"`
 }
 
 // Streamlines checking for errors
@@ -54,7 +38,9 @@ func checkErr(e error, message string) {
 func main() {
 
 	// set loader start time
-	var startTime string = time.Now().Format("2006-01-02 15:04:05")
+	//var startTime string = time.Now().Format(dtFormat)
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	var config Configuration = openAndReadConfig("config.json")
 	var dbConfig MysqlConfig = config.DbConfig
@@ -64,80 +50,38 @@ func main() {
 	defer dbmap.Db.Close()
 
 	// Goriot setup
+	// TODO: move limits to configuration
 	goriot.SetAPIKey(config.ApiKey)
-	goriot.SetSmallRateLimit(10, 10*time.Second)
-	goriot.SetLongRateLimit(500, 10*time.Minute)
+	goriot.SetSmallRateLimit(config.Limits.RequestsPerTenSeconds, 10*time.Second)
+	goriot.SetLongRateLimit(config.Limits.RequestsPerTenMinutes, 10*time.Minute)
 
-	// New Relic setup
-	agent := gorelic.NewAgent()
-	agent.NewrelicLicense = config.NewRelic
-	agent.NewrelicName = "League Loader"
-	agent.Run()
-
-	// get list of available summoners
-	var summoners []int64 = getSummoners(dbmap)
+	// get channel that streams summoner ids
+	//summoners, gameSummoners := getSummoners(dbmap)
+	summoners1, summoners2 := getSummoners(dbmap)
 
 	// update summoner information
-	updateSummoners(summoners, dbmap)
-	fmt.Println("Summoners updated")
+	updateSummoners(summoners1, dbmap)
 
 	// update game information
-	var updatedGameCount int = updateGames(summoners, dbmap) - 1
-	fmt.Println("Games updated: ", updatedGameCount)
+	updateGames(summoners2, dbmap)
 
 	// end loader time and save
-	var endTime string = time.Now().Format("2006-01-02 15:04:05")
-	saveLoadReport(startTime, endTime, updatedGameCount, dbmap)
+	//var endTime string = time.Now().Format(dtFormat)
+	//saveLoadReport(startTime, endTime, updatedGameCount, dbmap)
+
+	globalWg.Wait()
 
 	return
 }
 
-/***
- * Opens configuration files and
- * implements associated structs
- */
-func openAndReadConfig(configFileName string) (config Configuration) {
-
-	// load config file
-	configFile, err := os.Open(configFileName)
-	checkErr(err, "Unable to open config file")
-
-	// parse config file
-	jsonParser := json.NewDecoder(configFile)
-	err = jsonParser.Decode(&config)
-	checkErr(err, "Unable to decode json")
-
-	return config
-}
-
-/***
- * Sets up the "ORM" by connecting to db and mapping
- * structs to tables
- */
+// Creates a connection to a MySQL database
 func initDb(database string, username string, password string) *gorp.DbMap {
 	db, err := sql.Open("mymysql", database+"/"+username+"/"+password)
 	checkErr(err, "Connection failed")
 
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "utf-8"}}
 
-	dbmap.AddTableWithName(Summoner{}, "summoners").SetKeys(false, "Id")
-
 	return dbmap
-}
-
-/***
- * Checks a slice of int64 for a given
- * value
- */
-func existsInSlice(search int64, values []int64) (exists bool) {
-
-	for _, value := range values {
-		if value == search {
-			return true
-		}
-	}
-
-	return false
 }
 
 // Saves runttime report to db

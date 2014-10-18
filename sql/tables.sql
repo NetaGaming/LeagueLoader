@@ -25,104 +25,25 @@ CREATE TABLE IF NOT EXISTS neta_teams (
 CREATE TABLE IF NOT EXISTS summoners (
     id bigint(20) not null,
     name varchar(40) not null,
-    real_name varchar(60) not null,
     neta_team int(11) null,
-    `level` int(11) not null,
+    `level` int(11) null,
+    last_update datetime null,
     PRIMARY KEY (id),
     FOREIGN KEY (neta_team) REFERENCES neta_teams(id)
 );
 
-CREATE TABLE IF NOT EXISTS summoner_stats (
-    id int(11) AUTO_INCREMENT not null,
-    assists int,
-    barracksKilled int,
-    championsKilled int,
-    combatPlayerScore int,
-    consumablesPurchased int,
-    damageDealtPlayer int,
-    doubleKills int,
-    firstBlood int,
-    gold int,
-    goldEarned int,
-    goldSpent int,
-    item0 int,
-    item1 int,
-    item2 int,
-    item3 int,
-    item4 int,
-    item5 int,
-    item6 int,
-    itemsPurchased int,
-    killingSprees int,
-    largestCriticalStrike int,
-    largestKillingSpree int,
-    largestMultiKill int,
-    legendaryItemsCreated int,
-    level int,
-    magicDamageDealtPlayer int,
-    magicDamageDealtToChampions int,
-    magicDamageTaken int,
-    minionsDenied int,
-    minionsKilled int,
-    neutralMinionsKilled int,
-    neutralMinionsKilledEnemyJungle int,
-    neutralMinionsKilledYourJungle int,
-    nexusKilled bit(1),
-    nodeCapture int,
-    nodeCaptureAssist int,
-    nodeNeutralize int,
-    nodeNeutralizeAssist int,
-    numDeaths int,
-    numItemsBought int,
-    objectivePlayerScore int,
-    pentaKills int,
-    physicalDamageDealtPlayer int,
-    physicalDamageDealtToChampions int,
-    physicalDamageTaken int,
-    quadraKills int,
-    sightWardsBought int,
-    spellOneCast int,
-    spellTwoCast int,
-    spellThreeCast int,
-    spellFourCast int,
-    summonerSpellOneCast int,
-    summonerSpellTwoCast int,
-    superMonsterKilled int,
-    team int,
-    teamObjective int,
-    timePlayed int,
-    totalDamageDealt int,
-    totalDamageDealtToChampions int,
-    totalDamageTaken int,
-    totalHeal int,
-    totalPlayerScore int,
-    totalScoreRank int,
-    totalTimeCrowdControlDealt int,
-    totalUnitsHealed int,
-    tripleKills int,
-    trueDamageDealtPlayer int,
-    trueDamageDealtToChampions int,
-    trueDamageTaken int,
-    turretsKilled int,
-    unrealKills int,
-    victoryPointTotal int,
-    visionWardsBought int,
-    wardKilled int,
-    wardPlaced int,
-    PRIMARY KEY (id)
-);
-
 CREATE TABLE IF NOT EXISTS summoner_games (
-    id int(11) AUTO_INCREMENT not null,
     summonerId bigint not null,
     gameId bigint not null,
     championId int not null,
     spellOne int not null,
     spellTwo int not null,
-    statId int(11) not null,
+    minionsKilled int,
+    numDeaths int,
+    assists int,
+    championsKilled int,
     won bit(1),
-    PRIMARY KEY (id),
-    FOREIGN KEY (statId) REFERENCES summoner_stats(id),
+    PRIMARY KEY (summonerId, gameId),
     FOREIGN KEY (summonerId) REFERENCES summoners(id),
     FOREIGN KEY (gameId) REFERENCES game_info(id)
 );
@@ -134,3 +55,38 @@ CREATE TABLE IF NOT EXISTS runtimes (
     records int(11),
     PRIMARY KEY (id)
 );
+
+-- Pre-insert summoners
+INSERT INTO `summoners`
+    (name, id, `level`)
+VALUES
+     ('Darkmist16',77804,30)
+    ,('SuicideSnowman',21305835,30)
+    ,('Misaga',21465652,30)
+    ,('Delath',134961,30)
+    ,('AzayakaAkari',19772280,30)
+    ,('riskman64',24199871,30)
+    ,('Khoza',72009,30)
+    ,('echoblaze',21519850,30)
+    ,('TheJuggler',82712,30)
+    ,('m1tsu',31460782,30)
+    ,('019Ky',30082388,30)
+    ,('Mystenance',21731401,30)
+    ,('titan alibaba',52354738,30)
+    ,('striderfox',24461461,30)
+    ,('Faucetin',50981870,30)
+    ,('Takeiteasyonme',24200266,30)
+    ,('HybridEleven',43238261,30)
+    ,('taaaakun',24469600,30)
+    ,('Psychotic Idiot',41764137,30)
+    ,('W4yl4nder',58882619,30)
+    ,('Ngsanity',24220006,30)
+    ,('desunman',37051067,30)
+    ,('fadedlightx',43538849,30)
+    ,('akiraK',19928736,30)
+    ,('stopisme',20428822,30)
+    ,('ginourmous',24221257,30)
+    ,('karenkun',37058280,30)
+    ,('kalun85',24404121,30)
+    ,('juebag',21867311,30)
+    ,('1337bagger',50063257,30);
