@@ -14,7 +14,9 @@ KDA and CS.
 
 	```
 	mysql -u yourusername -p yourpassword yourdatabase < tables.sql
-	# or if you're already in MySQL
+	```  
+	Or if you're already in MySQL...  
+	```
 	source tables.sql
 	```
 * Update create a *config.json* file and update it to include your database
