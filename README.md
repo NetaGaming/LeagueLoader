@@ -1,3 +1,5 @@
+*This project is no longer maintained. If you would like to take it over, please reach out to [@mattcan](https://github.com/mattcan)*
+
 # LeagueLoader
 
 **LeagueLoader** is a command line application designed to take a
@@ -19,7 +21,7 @@ KDA and CS.
 	```
 	source tables.sql
 	```
-* Update create a *config.json* file and update it to include your database
+* Create a *config.json* file and update it to include your database
   credentials, Riot API key, and your rate limits
 
 ## Usage
